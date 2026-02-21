@@ -1,8 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile, File, Header
 from langchain_core.messages import HumanMessage, AIMessage
+
 from src.memory.chat_history_mongo import ChatHistory
-from src.memory.chathistory_in_memory import ChatInMemoryHistory
 from src.models.query_request import QueryRequest
+from src.rag.document_upload import documents
 from src.rag.graph_builder import builder
 
 router = APIRouter()
@@ -24,3 +25,9 @@ async def rag_query(req: QueryRequest):
     await chat_history.add_message(AIMessage(content=output_text))
 
     return {"result": result["messages"][-1]}
+
+@router.post("/rag/documents/upload")
+async def upload_file(file: UploadFile = File(...),description: str = Header(...,alias="X-Description")):
+    status_upload=documents(description,file)
+    return {"status": status_upload}
+

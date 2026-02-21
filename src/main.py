@@ -3,6 +3,7 @@ from src.api.routes import router
 
 app = FastAPI(title="Adaptive RAG API")
 app.include_router(router)
+app.state.description_=""
 
 @app.get("/")
 async def root():

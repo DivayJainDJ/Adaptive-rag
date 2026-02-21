@@ -7,7 +7,7 @@ from langgraph.constants import START, END
 from langgraph.graph.state import CompiledStateGraph, StateGraph
 
 from src.rag.reAct_agent import agent_executor
-from src.rag.retriever_setup import retriever
+from src.rag.retriever_setup import get_retriever
 from src.config.settings import Config
 from src.llms.openai import llm
 from src.models.grade import Grade
@@ -25,10 +25,13 @@ def query_classifier(state: State):
         state (State): the current state of the graph
     """
     question = state["messages"][-1].content
-    top_docs = retriever.invoke(question)
-    context = "\n\n".join([doc.page_content for doc in top_docs])
-    print("context received is")
+    retriever = get_retriever()
+    context = retriever.invoke(question)
+    print("docs received from Qdrant")
     print(context)
+    #context = "\n\n".join([doc.page_content for doc in top_docs])
+    #print("context received is")
+    #print(context)
     llm_with_structured_output = llm.with_structured_output(RouteIdentifier)
     classify_prompt = PromptTemplate(
         template=config.prompt("classify_prompt"),
@@ -114,7 +117,7 @@ def rewrite_query(state: State):
     result = chain.invoke({"query": query})
     print(result)
     return {
-        "latest_query": result.latest_query
+        "latest_query": result.content
     }
 
 

@@ -6,6 +6,10 @@ load_dotenv()
 class Settings:
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+    QDRANT_URL = os.getenv("QDRANT_URL")
+    QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+    CODE_COLLECTION = os.getenv("QDRANT_CODE_COLLECTION", "codebase")
+    DOCS_COLLECTION = os.getenv("QDRANT_DOCS_COLLECTION", "guidelines")
 
 settings = Settings()
 

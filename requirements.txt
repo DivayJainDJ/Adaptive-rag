@@ -17,3 +17,7 @@ fastapi
 uvicorn
 motor
 pymongo
+streamlit
+requests
+langchain-qdrant
+python-multipart
