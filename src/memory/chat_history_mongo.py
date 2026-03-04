@@ -1,9 +1,14 @@
-# src/memory/chat_history.py
+"""
+Chat history storage using MongoDB backend.
+"""
+
+from datetime import datetime
 from typing import List
+
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage
+
 from src.db.mongo_client import db
-from datetime import datetime
 
 collection = db["chat_history"]
 
@@ -12,10 +17,21 @@ class MongoDBChatMessageHistory(BaseChatMessageHistory):
     """Chat history backed by MongoDB."""
 
     def __init__(self, session_id: str):
+        """
+        Initialize chat history for a session.
+
+        Args:
+            session_id: Unique session identifier.
+        """
         self.session_id = session_id
 
     async def add_message(self, message: BaseMessage) -> None:
-        """Save a message to MongoDB."""
+        """
+        Save a message to MongoDB.
+
+        Args:
+            message: The message to save.
+        """
         await collection.insert_one({
             "session_id": self.session_id,
             "type": message.type,
@@ -25,11 +41,17 @@ class MongoDBChatMessageHistory(BaseChatMessageHistory):
         })
 
     async def get_messages(self) -> List[BaseMessage]:
-        """Load all messages for a session from MongoDB."""
+        """
+        Load all messages for a session from MongoDB.
+
+        Returns:
+            List of messages in chronological order.
+        """
         from langchain_core.messages import messages_from_dict
 
         cursor = collection.find({"session_id": self.session_id}).sort("timestamp", 1)
         docs = await cursor.to_list(length=1000)
+
         # Convert to BaseMessage objects
         return messages_from_dict([
             {
@@ -51,5 +73,19 @@ class ChatHistory:
     """Factory for MongoDB-backed chat history."""
 
     @classmethod
-    def get_session_history(cls, session_id: str, config: dict = None) -> MongoDBChatMessageHistory:
+    def get_session_history(
+        cls,
+        session_id: str,
+        config: dict = None
+    ) -> MongoDBChatMessageHistory:
+        """
+        Get or create chat history for a session.
+
+        Args:
+            session_id: Unique session identifier.
+            config: Optional configuration dictionary.
+
+        Returns:
+            MongoDBChatMessageHistory instance for the session.
+        """
         return MongoDBChatMessageHistory(session_id)

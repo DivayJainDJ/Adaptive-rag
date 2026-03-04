@@ -1,3 +1,7 @@
+"""
+MongoDB client initialization.
+"""
+
 from motor.motor_asyncio import AsyncIOMotorClient
 
 MONGO_URL = "mongodb://localhost:27017"

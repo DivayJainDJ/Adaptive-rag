@@ -1,7 +1,12 @@
+"""
+Chat page for the Streamlit application.
+"""
+
 import streamlit as st
+
 from streamlit_app.utils.api_client import query_backend, document_upload_rag
 
-# 👇 This hides the page list from the sidebar
+# Configure page settings
 st.set_page_config(
     page_title="LangGraph Chat",
     layout="wide",
@@ -13,35 +18,35 @@ st.set_page_config(
     }
 )
 
-
-# Session state for confirmation popup
+# Initialize logout confirmation state
 if "show_logout_confirm" not in st.session_state:
     st.session_state.show_logout_confirm = False
 
+# Header with logout button
 col1, col2 = st.columns([10, 2])
 with col2:
-    st.write("")  # spacer
+    st.write("")  # Spacer
     if st.button("🔒 Logout", use_container_width=True):
         st.session_state.show_logout_confirm = True
 
-# Show confirmation dialog
+# Logout confirmation dialog
 if st.session_state.show_logout_confirm:
     st.warning("Are you sure you want to logout?")
     col_confirm, col_cancel = st.columns(2)
     with col_confirm:
         if st.button("✅ Yes, logout"):
-            # Clear session
+            # Clear session state
             for key in list(st.session_state.keys()):
                 del st.session_state[key]
-            # Redirect to home.py
-            st.switch_page("Home.py")  # "Home" must match the label of the home page
+            # Redirect to home page
+            st.switch_page("Home.py")
     with col_cancel:
         if st.button("❌ Cancel"):
             st.session_state.show_logout_confirm = False
 
-st.set_page_config(page_title="LangGraph Chat")
 st.title("💬 LangGraph Chat")
 
+# Document upload section
 with st.sidebar:
     st.header("📂 Upload Documents")
 
@@ -62,7 +67,7 @@ with st.sidebar:
 
         if file_description:
             if file_key not in st.session_state.uploaded_files:
-                # Only upload if not already uploaded
+                # Upload file if not already uploaded
                 success = document_upload_rag(uploaded_file, file_description)
                 if success:
                     st.success(f"Uploaded: {uploaded_file.name}")
@@ -74,26 +79,25 @@ with st.sidebar:
         else:
             st.warning("Please describe your document before uploading.")
 
-
-
-
+# Check authentication
 if "session_id" not in st.session_state:
     st.warning("Please login first.")
     st.stop()
 
+# Initialize chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Input box
+# User input
 user_input = st.chat_input("Ask a question...")
 
-# Process user input (before rendering UI)
+# Process user input and get response
 if user_input:
     st.session_state.chat_history.append(("user", user_input))
     response = query_backend(user_input, st.session_state["jwt_token"])
     st.session_state.chat_history.append(("assistant", response))
-    st.rerun() # <== rerun the script to show the updated messages
+    st.rerun()  # Rerun script to display updated messages
 
-# Show chat history (after update)
+# Display chat history
 for role, text in st.session_state.chat_history:
     st.chat_message(role).write(text)
