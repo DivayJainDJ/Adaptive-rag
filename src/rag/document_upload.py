@@ -31,6 +31,7 @@ def documents(description: str, file: UploadFile = File(...)):
         HTTPException: If file type is not supported or loading fails.
     """
     filename = file.filename
+    print(filename)
     if not filename.endswith(".pdf") and not filename.endswith(".txt"):
         from fastapi import HTTPException
         raise HTTPException(
