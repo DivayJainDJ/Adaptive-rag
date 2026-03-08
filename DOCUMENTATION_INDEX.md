@@ -138,6 +138,7 @@ AdaptiveRag/
 | CODE_STYLE_GUIDE.md | 450+ | Complete guidelines |
 | QUICK_REFERENCE.md | 150+ | Quick patterns |
 | DOCUMENTATION_INDEX.md | This file | Navigation |
+| QDRANT_SETUP_GUIDE.md | 100+ | Setup guide for Qdrant |
 
 ### Code Files Modified
 | Category | Count | Status |
@@ -419,4 +420,3 @@ You now have:
 ---
 
 **Navigate easily with this index. Happy coding! 🚀**
-
