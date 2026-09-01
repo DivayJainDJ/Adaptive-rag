@@ -1,76 +1,92 @@
 """
-Home page for Streamlit authentication interface.
+Home page for Streamlit Adaptive RAG application.
 """
 
 import logging
+import uuid
 
 import streamlit as st
 
-from utils.api_client import create_user, login_user, get_api_token
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+from utils.api_client import document_upload_rag, query_backend
 
-# Hide sidebar for cleaner look
-hide_sidebar_style = """
-    <style>
-        [data-testid="stSidebarNav"] {
-            display: none;
-        }
-    </style>
-"""
-st.markdown(hide_sidebar_style, unsafe_allow_html=True)
+st.set_page_config(page_title="Adaptive RAG", page_icon="🤖")
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     filename="app.log",
     filemode="a",
 )
-logger = logging.getLogger(__name__)
 
-st.set_page_config(page_title="LangGraph Chat - Login")
-
-st.title("🔐 Welcome to LangGraph Assistant")
-
-token = ""
-
-# Step 1: Fetch API token only once per session
+# Create a session ID locally.
 if "session_id" not in st.session_state:
-    token = get_api_token()
-    if token:
-        st.session_state["session_id"] = token
-        st.success("API token initialized.")
-    else:
-        st.error("Failed to initialize API token.")
-        st.stop()
+    st.session_state["session_id"] = str(uuid.uuid4())
 
-# Step 2: Render login/signup form
-with st.form("auth_form"):
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    mode = st.radio("Choose action:", ["Login", "Create Account"])
-    submit = st.form_submit_button("Submit")
+if "username" not in st.session_state:
+    st.session_state["username"] = "Guest"
 
-# Step 3: Handle login/account creation
-if submit:
-    if not username or not password:
-        st.error("Username and password required.")
+st.title("🤖 Adaptive RAG Assistant")
+
+st.success("Connected to Adaptive RAG backend.")
+
+st.write(
+    f"Session: `{st.session_state['session_id']}`"
+)
+
+st.divider()
+
+# Document upload
+st.subheader("📄 Upload a Document")
+
+uploaded_file = st.file_uploader(
+    "Upload a PDF or TXT document",
+    type=["pdf", "txt"],
+)
+
+description = st.text_input(
+    "Document description",
+    placeholder="Describe this document...",
+)
+
+if st.button("Upload Document"):
+    if uploaded_file is None:
+        st.error("Please select a document first.")
+    elif not description:
+        st.error("Please provide a document description.")
     else:
-        if mode == "Create Account":
-            success = create_user(username, password, st.session_state["session_id"])
-            if success:
-                st.success("User created. Please log in.")
-            else:
-                st.error("User creation failed.")
+        success = document_upload_rag(
+            uploaded_file,
+            description,
+        )
+
+        if success:
+            st.success("Document uploaded successfully!")
         else:
-            response = login_user(username, password, st.session_state["session_id"])
-            if response and response.get("jwt"):
-                st.session_state["jwt_token"] = response["jwt"]
-                st.session_state["username"] = username
-                st.switch_page("pages/Chat.py")
-            else:
-                st.error("Login failed. Downstream API error: Received empty JWT token.")
+            st.error("Document upload failed.")
 
-# Debug logs section
+st.divider()
+
+# Chat
+st.subheader("💬 Ask Adaptive RAG")
+
+query = st.chat_input("Ask a question about your documents...")
+
+if query:
+    with st.chat_message("user"):
+        st.write(query)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            response = query_backend(
+                query,
+                st.session_state["session_id"],
+            )
+
+        st.write(response)
+
+# Debug logs
 with st.expander("📜 Debug Logs"):
     try:
         with open("app.log", "r") as log_file:

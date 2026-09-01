@@ -1,2 +1,10 @@
 venv/
 .env
+__pycache__/
+*.pyc
+app.log
+description.txt
+.idea/
+*.egg-info/
+dist/
+build/
