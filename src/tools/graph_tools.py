@@ -7,7 +7,7 @@ from typing import Literal
 from langchain_core.prompts import PromptTemplate
 
 from src.config.settings import Config
-from src.llms.openai import llm
+from src.llms.groq import llm
 from src.models.state import State
 from src.models.verification_result import VerificationResult
 
@@ -44,10 +44,9 @@ def doc_tool(state: State) -> Literal["rewrite", "generate"]:
     """
     score = state["binary_score"]
     print(f"[doc_tool] Routing based on score: {score}")
-    if score == "yes":
+    if score == "yes" or (state.get("rewrite_count") or 0) >= 1:
         return "generate"
-    else:
-        return "rewrite"
+    return "rewrite"
 
 
 def verify_answer(state: State) -> Literal["__end__", "generate"]:
@@ -64,8 +63,9 @@ def verify_answer(state: State) -> Literal["__end__", "generate"]:
         return "__end__"
 
     question = state["latest_query"]
-    context = state["messages"][-1].content
+    # messages[-2] = retrieved context, messages[-1] = generated answer
     final_answer = state["messages"][-1].content
+    context = state["messages"][-2].content if len(state["messages"]) >= 2 else final_answer
 
     verify_prompt = PromptTemplate(
         template=config.prompt("verify_prompt"),

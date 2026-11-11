@@ -177,6 +177,37 @@ curl -X POST http://localhost:8000/rag/documents/upload \
 
 ---
 
+## Evaluation: does routing help?
+
+20 questions (10 answerable only from an indexed handbook, 6 general
+knowledge, 4 needing live search) are run twice: once through the real graph
+with LLM query classification, and once through the same graph with
+classification removed (`compile_graph(force_route="index")`, so every question
+is answered from the vector index). A keyword check decides whether each
+answer actually contains the expected fact.
+
+```bash
+python run_eval.py          # writes eval/routing_results.json
+```
+
+| Arm | Relevant answers |
+|---|---|
+| With adaptive routing | **20 / 20 (100%)** |
+| Without routing (index only) | 10 / 20 (50%) |
+
+Without routing, every non-handbook question gets "I do not have that
+information" — the index route never reaches the model's own knowledge or the
+web. The last run used `qwen/qwen3.8-27b` because the account's daily token
+budget for `openai/gpt-oss-20b` was exhausted; both arms used the same model,
+so the comparison holds. See [`eval/README.md`](eval/README.md) for the
+protocol, the questions, and the per-question answers in
+[`eval/routing_results.json`](eval/routing_results.json).
+
+Limitations: relevance is a substring check, not an LLM judge, and the run made
+live Tavily searches, so search-question answers vary between runs.
+
+---
+
 ## Author
 
 **Divay Jain**

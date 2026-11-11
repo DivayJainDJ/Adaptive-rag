@@ -2,52 +2,40 @@
 Retriever setup and vector store configuration.
 """
 
-import os
+from pathlib import Path
 
 from langchain_core.documents import Document
-from langchain_core.tools import create_retriever_tool
-from langchain_openai import OpenAIEmbeddings
-# from langchain_qdrant import QdrantVectorStore
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-from src.core.config import settings
-
-embeddings = OpenAIEmbeddings()
-
-# Global variable to store the FAISS vectorstore instance
-# This ensures get_retriever() can access documents stored by retriever_chain()
+INDEX_DIR = Path(__file__).resolve().parents[2] / "faiss_index"
+_embeddings = None
 _faiss_vectorstore = None
+
+
+def get_embeddings():
+    """Load HuggingFace embeddings once (no OpenAI key required)."""
+    global _embeddings
+    if _embeddings is None:
+        _embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+    return _embeddings
 
 
 def retriever_chain(chunks: list[Document]):
     """
     Initialize and store documents in FAISS vector database.
-
-    Args:
-        chunks: List of document chunks to store.
-
-    Returns:
-        Boolean indicating success of the operation.
     """
     global _faiss_vectorstore
 
     try:
-        # Commenting out Qdrant code for temporary FAISS usage
-        # vectorstore = QdrantVectorStore.from_documents(
-        #     documents=chunks,
-        #     embedding=embeddings,
-        #     url=settings.QDRANT_URL,
-        #     api_key=settings.QDRANT_API_KEY,
-        #     collection_name=settings.CODE_COLLECTION,
-        # )
-        vectorstore = FAISS.from_documents(
+        _faiss_vectorstore = FAISS.from_documents(
             documents=chunks,
-            embedding=embeddings
+            embedding=get_embeddings(),
         )
-
-        # Store the vectorstore globally so get_retriever() can access it
-        _faiss_vectorstore = vectorstore
-
+        INDEX_DIR.mkdir(parents=True, exist_ok=True)
+        _faiss_vectorstore.save_local(str(INDEX_DIR))
         print("FAISS vector store initialized with documents")
         print(f"Vectorstore contains {len(chunks)} document chunks")
         return True
@@ -56,68 +44,44 @@ def retriever_chain(chunks: list[Document]):
         return False
 
 
+def get_vectorstore():
+    global _faiss_vectorstore
+    if _faiss_vectorstore is not None:
+        return _faiss_vectorstore
+    if INDEX_DIR.exists():
+        try:
+            _faiss_vectorstore = FAISS.load_local(
+                str(INDEX_DIR),
+                get_embeddings(),
+                allow_dangerous_deserialization=True,
+            )
+            return _faiss_vectorstore
+        except Exception as exc:
+            print(f"Could not load saved FAISS index: {exc}")
+    return None
+
+
+def get_base_retriever():
+    """Return the current FAISS retriever, or None if nothing is indexed."""
+    store = get_vectorstore()
+    if store is None:
+        return None
+    return store.as_retriever(search_kwargs={"k": 4})
+
+
+def search_uploaded_documents(query: str) -> str:
+    """Search indexed documents; used by the ReAct agent as a tool."""
+    retriever = get_base_retriever()
+    if retriever is None:
+        return "No documents have been uploaded yet. Please upload a document first."
+    docs = retriever.invoke(query)
+    if not docs:
+        return "No relevant documents found."
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
 def get_retriever():
     """
-    Get a retriever tool connected to the FAISS vector store.
-
-    Returns the retriever tool that can search documents stored by retriever_chain().
-    If no documents have been uploaded yet, creates a retriever with a dummy document.
-
-    Returns:
-        A LangChain retriever tool configured for the vector store.
-
-    Raises:
-        Exception: If vector store initialization fails.
+    Compatibility wrapper. Prefer get_base_retriever() or search_uploaded_documents().
     """
-    global _faiss_vectorstore
-
-    try:
-        # Commenting out Qdrant code for temporary FAISS usage
-        # vectorstore = QdrantVectorStore.from_documents(
-        #     documents=[],
-        #     embedding=embeddings,
-        #     url=settings.QDRANT_URL,
-        #     api_key=settings.QDRANT_API_KEY,
-        #     collection_name=settings.CODE_COLLECTION,
-        # )
-        # retriever = vectorstore.as_retriever()
-
-        # Use the global vectorstore if it exists (documents have been uploaded)
-        if _faiss_vectorstore is not None:
-            retriever = _faiss_vectorstore.as_retriever()
-            print("Using existing FAISS vectorstore with uploaded documents")
-        else:
-            # No documents uploaded yet, create dummy for initialization
-            print("No documents uploaded yet, creating dummy vectorstore")
-            from langchain_core.documents import Document as LangChainDocument
-
-            dummy_doc = LangChainDocument(
-                page_content="No documents have been uploaded yet. Please upload a document first.",
-                metadata={"source": "initialization"}
-            )
-
-            _faiss_vectorstore = FAISS.from_documents(
-                documents=[dummy_doc],
-                embedding=embeddings
-            )
-            retriever = _faiss_vectorstore.as_retriever()
-
-        # Load document description
-        if os.path.exists("description.txt"):
-            with open("description.txt", "r", encoding="utf-8") as f:
-                description = f.read()
-        else:
-            description = None
-
-        retriever_tool = create_retriever_tool(
-            retriever,
-            "retriever_customer_uploaded_documents",
-            f"Use this tool **only** to answer questions about: {description}\n"
-            "Don't use this tool to answer anything else."
-        )
-
-        return retriever_tool
-
-    except Exception as e:
-        print(f"Error initializing retriever: {e}")
-        raise Exception(e)
+    return search_uploaded_documents

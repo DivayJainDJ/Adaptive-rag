@@ -24,6 +24,14 @@ class MongoDBChatMessageHistory(BaseChatMessageHistory):
             session_id: Unique session identifier.
         """
         self.session_id = session_id
+        # In-memory cache so the sync `messages` property can return something
+        # without an async DB call. Populated by the first `get_messages()` call.
+        self._cache: List[BaseMessage] = []
+
+    @property
+    def messages(self) -> List[BaseMessage]:
+        """Sync property required by BaseChatMessageHistory. Returns the cache."""
+        return self._cache
 
     async def add_message(self, message: BaseMessage) -> None:
         """
@@ -39,6 +47,7 @@ class MongoDBChatMessageHistory(BaseChatMessageHistory):
             "additional_kwargs": message.additional_kwargs,
             "timestamp": datetime.utcnow(),
         })
+        self._cache.append(message)
 
     async def get_messages(self) -> List[BaseMessage]:
         """
@@ -53,7 +62,7 @@ class MongoDBChatMessageHistory(BaseChatMessageHistory):
         docs = await cursor.to_list(length=1000)
 
         # Convert to BaseMessage objects
-        return messages_from_dict([
+        self._cache = messages_from_dict([
             {
                 "type": d["type"],
                 "data": {
@@ -63,6 +72,7 @@ class MongoDBChatMessageHistory(BaseChatMessageHistory):
             }
             for d in docs
         ])
+        return self._cache
 
     async def clear(self) -> None:
         """Delete all messages for a session."""

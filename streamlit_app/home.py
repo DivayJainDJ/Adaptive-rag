@@ -8,8 +8,9 @@ import uuid
 import streamlit as st
 
 import sys, os
+import requests
 sys.path.insert(0, os.path.dirname(__file__))
-from utils.api_client import document_upload_rag, query_backend
+from utils.api_client import PYTHON_BASE_URL, document_upload_rag, query_backend
 
 st.set_page_config(page_title="Adaptive RAG", page_icon="🤖")
 
@@ -29,7 +30,14 @@ if "username" not in st.session_state:
 
 st.title("🤖 Adaptive RAG Assistant")
 
-st.success("Connected to Adaptive RAG backend.")
+try:
+    health = requests.get(f"{PYTHON_BASE_URL}/health", timeout=2)
+    if health.ok:
+        st.success(f"Connected to Adaptive RAG backend at {PYTHON_BASE_URL}")
+    else:
+        st.error(f"Backend at {PYTHON_BASE_URL} returned HTTP {health.status_code}")
+except requests.RequestException as exc:
+    st.error(f"Backend is not reachable at {PYTHON_BASE_URL}. Start FastAPI on port 8001. ({exc})")
 
 st.write(
     f"Session: `{st.session_state['session_id']}`"

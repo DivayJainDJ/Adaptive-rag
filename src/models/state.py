@@ -15,3 +15,4 @@ class State(TypedDict):
     binary_score: Optional[str]
     route: Optional[str]
     latest_query: Optional[str]
+    rewrite_count: Optional[int]

@@ -64,14 +64,20 @@ def documents(description: str, file: UploadFile = File(...)):
     finally:
         os.unlink(tmp_path)
 
-    # Enhance description using LLM
-    description_llm = enhance_description_with_llm(description)
+    try:
+        description_llm = enhance_description_with_llm(description)
+    except Exception as exc:
+        print(f"description enhancement failed ({exc}); using original description")
+        description_llm = description
 
-    # Save enhanced description
-    with open("description.txt", "w", encoding="utf-8") as f:
+    # Save enhanced description next to this module so the path is stable
+    # regardless of the working directory the server was started from.
+    _HERE = os.path.dirname(os.path.abspath(__file__))
+    _desc_path = os.path.join(_HERE, "description.txt")
+    with open(_desc_path, "w", encoding="utf-8") as f:
         f.write(description_llm)
 
-    with open("description.txt", "r", encoding="utf-8") as f:
+    with open(_desc_path, "r", encoding="utf-8") as f:
         print("Document description from storage:")
         print(f.read())
 

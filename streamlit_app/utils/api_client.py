@@ -10,8 +10,8 @@ import requests
 logger = logging.getLogger(__name__)
 
 # Backend service URLs
-RUST_BASE_URL = "http://localhost:8080/api"
-PYTHON_BASE_URL = "http://127.0.0.1:8000"
+PYTHON_BASE_URL = os.getenv("ADAPTIVE_RAG_API", "http://127.0.0.1:8001")  # FastAPI; keep off 8000 so Fresher-AI can run too
+RUST_BASE_URL = os.getenv("ADAPTIVE_RAG_AUTH_API", f"{PYTHON_BASE_URL}/api")
 
 
 def create_user(username: str, password: str, api_token: str) -> bool:

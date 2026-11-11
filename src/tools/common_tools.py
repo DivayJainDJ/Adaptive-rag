@@ -2,7 +2,7 @@
 Common tools for document and description processing.
 """
 
-from src.llms.openai import llm
+from src.llms.groq import llm
 
 
 def enhance_description_with_llm(user_description: str) -> str:
