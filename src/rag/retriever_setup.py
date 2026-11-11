@@ -5,7 +5,7 @@ Retriever setup and vector store configuration.
 from pathlib import Path
 
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 
 INDEX_DIR = Path(__file__).resolve().parents[2] / "faiss_index"
@@ -14,10 +14,14 @@ _faiss_vectorstore = None
 
 
 def get_embeddings():
-    """Load HuggingFace embeddings once (no OpenAI key required)."""
+    """Load embeddings once (no OpenAI key required).
+
+    Uses fastembed's ONNX build of the same MiniLM model, so existing FAISS
+    indexes stay compatible while avoiding the heavy PyTorch runtime.
+    """
     global _embeddings
     if _embeddings is None:
-        _embeddings = HuggingFaceEmbeddings(
+        _embeddings = FastEmbedEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
     return _embeddings
